@@ -46,6 +46,9 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, Obser
         window.title = "牛马计数器"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
+        for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            window.standardWindowButton(button)?.isHidden = true
+        }
         window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
         window.delegate = self
@@ -148,8 +151,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, Obser
     }
 
     private func resize() {
-        let size = editing ? NSSize(width: 420, height: 495)
-            : compact ? NSSize(width: 320, height: 112) : NSSize(width: 380, height: 588)
+        let size = editing ? NSSize(width: 420, height: 515)
+            : compact ? NSSize(width: 260, height: 42) : NSSize(width: 380, height: 588)
         let top = window.frame.maxY
         window.setContentSize(size)
         var frame = window.frame
@@ -187,72 +190,95 @@ struct CounterView: View {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     let now = Date()
                     let result = schedule.snapshot(at: now)
-                    VStack(alignment: .leading, spacing: model.compact ? 5 : 13) {
-                        if model.compact {
-                            HStack {
-                                header(result)
-                                Spacer(minLength: 8)
-                                windowControls
-                            }
-                        } else {
-                            HStack {
-                                Text(Self.clockFormatter.string(from: now))
-                                    .font(.caption)
-                                    .monospacedDigit()
-                                    .foregroundStyle(.secondary)
-                                Spacer(minLength: 8)
-                                windowControls
-                            }
-                            header(result)
-                        }
-                        if !model.compact {
-                            Text("今日已赚").font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        Text(result.amount.formatted(.currency(code: "CNY").locale(Locale(identifier: "zh_CN"))
-                            .precision(.fractionLength(5))))
-                            .font(.system(size: model.compact ? 27 : 43, weight: .bold, design: .monospaced))
-                            .foregroundStyle(model.theme.accent)
-                            .lineLimit(1).minimumScaleFactor(0.35)
-                            .accessibilityLabel("今日已赚")
-                        if !model.compact {
-                            if let next = result.next {
-                                let seconds = Int(max(0, next.1.timeIntervalSince(now)).rounded(.up))
-                                Text("距离\(next.0)还有 \(seconds / 3600) 小时 \(seconds / 60 % 60) 分 \(seconds % 60) 秒")
-                                    .monospacedDigit()
-                            }
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("当前赚钱速度 ¥\(result.rate, format: .number.precision(.fractionLength(5)))/秒 · ¥\(result.rate * 60, format: .number.precision(.fractionLength(2)))/分钟")
-                                Text("本日还有 \(result.remaining, format: .number.precision(.fractionLength(2))) 元待领取")
-                            }
-                            .font(.subheadline)
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                            VStack(spacing: 5) {
-                                HStack {
-                                    Text("今日工时进度 \(result.elapsed / max(1, result.planned), format: .percent.precision(.fractionLength(1)))")
-                                    Spacer(minLength: 8)
-                                    Text("\(result.elapsed / 3600, format: .number.precision(.fractionLength(2))) / \(result.planned / 3600, format: .number.precision(.fractionLength(2))) 小时")
-                                }
-                                .font(.subheadline)
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                                ProgressView(value: result.elapsed, total: max(1, result.planned))
-                            }
-                            Divider()
-                            DailyRewards(snapshot: result, theme: model.theme)
-                            MonthlyRewards(snapshot: result, theme: model.theme)
-                            WorkQuoteCard(theme: model.theme)
-                        }
-                        Spacer(minLength: 0)
+                    if model.compact {
+                        compactStrip(result, now: now)
+                    } else {
+                        expanded(result, now: now)
                     }
-                    .padding(.horizontal, 22)
-                    .padding(.top, model.compact ? 27 : 5)
-                    .padding(.bottom, model.compact ? 12 : 8)
                 }
+                .ignoresSafeArea(.container, edges: .top)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .tint(model.theme.accent)
+    }
+
+    private func compactStrip(_ result: Snapshot, now: Date) -> some View {
+        let summary: String
+        if let (event, date) = result.next {
+            let minutes = max(0, Int(ceil(date.timeIntervalSince(now) / 60)))
+            summary = minutes >= 60 ? "\(minutes / 60) 小时 \(minutes % 60) 分后\(event)" : "\(minutes) 分钟后\(event)"
+        } else {
+            summary = result.state
+        }
+        return HStack(spacing: 7) {
+            Circle()
+                .fill(result.state == "上班中" ? Color.green : model.theme.accent)
+                .frame(width: 6, height: 6)
+                .accessibilityHidden(true)
+            RollingAmount(amount: result.amount, size: 21, color: model.theme.accent)
+            Text(summary)
+                .font(.system(size: 11))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .layoutPriority(1)
+        }
+        .padding(.horizontal, 12)
+        .offset(y: -4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2, perform: model.toggleCompact)
+        .accessibilityAction(named: Text("展开"), model.toggleCompact)
+        .help("双击展开")
+    }
+
+    private func expanded(_ result: Snapshot, now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 13) {
+            HStack {
+                Text(Self.clockFormatter.string(from: now))
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                windowControls
+            }
+            header(result)
+            Text("今日已赚").font(.subheadline).foregroundStyle(.secondary)
+            RollingAmount(amount: result.amount, size: 43, color: model.theme.accent)
+            if let next = result.next {
+                let seconds = Int(max(0, next.1.timeIntervalSince(now)).rounded(.up))
+                Text("距离\(next.0)还有 \(seconds / 3600) 小时 \(seconds / 60 % 60) 分 \(seconds % 60) 秒")
+                    .monospacedDigit()
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("当前赚钱速度 ¥\(result.rate, format: .number.precision(.fractionLength(5)))/秒 · ¥\(result.rate * 60, format: .number.precision(.fractionLength(2)))/分钟")
+                Text("本日还有 \(result.remaining, format: .number.precision(.fractionLength(2))) 元待领取")
+            }
+            .font(.subheadline)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+            VStack(spacing: 5) {
+                HStack {
+                    Text("今日工时进度 \(result.elapsed / max(1, result.planned), format: .percent.precision(.fractionLength(1)))")
+                    Spacer(minLength: 8)
+                    Text("\(result.elapsed / 3600, format: .number.precision(.fractionLength(2))) / \(result.planned / 3600, format: .number.precision(.fractionLength(2))) 小时")
+                }
+                .font(.subheadline)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                ProgressView(value: result.elapsed, total: max(1, result.planned))
+            }
+            Divider()
+            DailyRewards(snapshot: result, theme: model.theme)
+            MonthlyRewards(snapshot: result, theme: model.theme)
+            WorkQuoteCard(theme: model.theme)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
     }
 
     private func header(_ result: Snapshot) -> some View {
@@ -324,6 +350,8 @@ struct CounterView: View {
 struct SettingsView: View {
     @State var draft: Schedule
     @State private var restCount = 2
+    @State private var showingPaydays = false
+    @State private var showingAbout = false
     let canCancel: Bool
     let save: (Schedule) -> Void
     let cancel: () -> Void
@@ -333,7 +361,10 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(canCancel ? "计薪设置" : "设置你的工作时间").font(.title2.bold())
+            Text(canCancel ? "计薪设置" : "设置你的工作时间")
+                .font(.title2.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(SettingsDragArea())
             Text("金额按排班估算，设置仅保存在这台 Mac。").foregroundStyle(.secondary)
             TextField("月薪（元）", text: $draft.salary)
                 .textFieldStyle(.roundedBorder)
@@ -363,6 +394,11 @@ struct SettingsView: View {
                 GridRow { timePicker(0); timePicker(1) }
                 GridRow { timePicker(2); timePicker(3) }
             }
+            if let hours = draft.plannedHoursLabel {
+                Text("每日计薪工时：\(hours)（不含午休）")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Toggle("手动指定每月计薪天数", isOn: Binding(get: { draft.fixedDays != nil }, set: {
                 draft.fixedDays = $0 ? 22 : nil
             }))
@@ -372,22 +408,56 @@ struct SettingsView: View {
             } else {
                 Text("按当月日历和休息日自动计算").foregroundStyle(.secondary)
             }
-            Picker("每月发薪日", selection: Binding(get: { draft.payday ?? 0 }, set: {
-                draft.payday = $0 == 0 ? nil : $0
-            })) {
-                Text("未设置").tag(0)
-                ForEach(1...31, id: \.self) { day in
-                    Text("每月 \(day) 日").tag(day)
+            HStack {
+                Text("每月发薪日")
+                Button {
+                    showingPaydays.toggle()
+                } label: {
+                    HStack {
+                        Text(draft.payday.map { "每月 \($0) 日" } ?? "未设置")
+                        Image(systemName: "chevron.down").font(.caption2)
+                    }
                 }
+                .popover(isPresented: $showingPaydays, arrowEdge: .bottom) {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(0...31, id: \.self) { day in
+                                Button {
+                                    draft.payday = day == 0 ? nil : day
+                                    showingPaydays = false
+                                } label: {
+                                    HStack {
+                                        Text(day == 0 ? "未设置" : "每月 \(day) 日")
+                                        Spacer()
+                                        if (draft.payday ?? 0) == day {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .frame(height: 28)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .frame(width: 160, height: 205)
+                }
+                .help("月份天数不足时，按当月最后一天计算")
             }
-            .help("月份天数不足时，按当月最后一天计算")
             if !draft.valid || draft.rest.count != restCount {
                 Text("请填写有效月薪，选满休息日，并确保上下班时间有序且不重叠。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             HStack {
-                Button("退出应用") { NSApp.terminate(nil) }
+                Button("重置设置") {
+                    draft = Schedule()
+                    restCount = draft.rest.count
+                }
+                Button("关于") { showingAbout = true }
+                if !canCancel { Button("退出应用") { NSApp.terminate(nil) } }
                 Spacer()
                 if canCancel { Button("取消", action: cancel).keyboardShortcut(.cancelAction) }
                 Button("保存") { save(draft) }
@@ -396,6 +466,20 @@ struct SettingsView: View {
             }
         }
         .onAppear { restCount = draft.rest.count }
+        .sheet(isPresented: $showingAbout) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("关于牛马计数器").font(.title2.bold())
+                Text("开发者：二进制的伽利略")
+                Text("版本：V1.1").foregroundStyle(.secondary)
+                Button("关闭") { showingAbout = false }
+                    .keyboardShortcut(.defaultAction)
+                    .keyboardShortcut(.cancelAction)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 5)
+            }
+            .frame(width: 245)
+            .padding(22)
+        }
     }
 
     private func timePicker(_ index: Int) -> some View {
@@ -407,5 +491,16 @@ struct SettingsView: View {
             let parts = Calendar.current.dateComponents([.hour, .minute], from: $0)
             draft.times[index] = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
         }), displayedComponents: .hourAndMinute)
+    }
+}
+
+private struct SettingsDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> DragView { DragView() }
+    func updateNSView(_ view: DragView, context: Context) {}
+
+    final class DragView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
+        }
     }
 }

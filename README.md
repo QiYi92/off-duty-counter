@@ -1,14 +1,14 @@
 <h1 align="center">牛马计数器</h1>
 <p align="center">一个原生 macOS 工资计数器。看看今天赚了多少，还要多久下班。</p>
-<p align="center"><a href="https://github.com/QiYi92/off-duty-counter/releases/tag/v1.0.0">下载 v1.0.0</a> · <a href="https://github.com/QiYi92/off-duty-counter/issues">报告问题</a> · macOS 13+</p>
+<p align="center"><a href="https://github.com/QiYi92/off-duty-counter/releases/tag/v1.1">下载 v1.1</a> · <a href="https://github.com/QiYi92/off-duty-counter/issues">报告问题</a> · macOS 13+ / Windows 10–11</p>
 
 <p align="center">
   <img src="docs/screenshots/main-window.png" alt="牛马计数器主窗口，展示工资、工时进度、今日和本月收获" width="380">
 </p>
 
-## 下载与安装
+## 下载与安装（macOS）
 
-1. 在 [v1.0.0 发布页](https://github.com/QiYi92/off-duty-counter/releases/tag/v1.0.0) 下载 macOS ZIP。
+1. 在 [v1.1 发布页](https://github.com/QiYi92/off-duty-counter/releases/tag/v1.1) 下载 macOS ZIP。
 2. 解压，把 `牛马计数器.app` 拖到「应用程序」。
 3. 首次打开后，填写月薪、工作时段和休息日。还可以设置每月发薪日。
 
@@ -44,3 +44,11 @@ swift run Counter
 - [爱范儿：摸鱼学导论](https://www.ifanr.com/1405965)
 - [澎湃号：摸鱼摸得好，也能反过来剥削老板](https://www.thepaper.cn/newsDetail_forward_12542753)
 - [查新词：带薪摸鱼](https://chaxinci.com/ci/daixinmoyu)
+
+## Windows 便携版
+
+从 [v1.1 发布页](https://github.com/QiYi92/off-duty-counter/releases/tag/v1.1) 下载对应的便携 EXE。Windows 10/11 64 位版本提供独立 EXE。Intel 或 AMD 电脑使用 x64，Windows on Arm 使用 ARM64。双击下载的 EXE 即可打开，无需安装 .NET 或获取管理员权限。首次运行时填写月薪和排班。
+
+点击「收进托盘」、最小化或关闭窗口，应用会留在任务栏右下角的通知区域。左键点击秒表图标恢复窗口，右键可以打开设置或退出。如果没看到图标，点通知区域的上箭头。设置保存在当前 Windows 用户的本地应用数据目录。
+
+使用 .NET 10 SDK 运行 `./windows/publish.sh`，会在 `.build/windows/win-x64/` 和 `.build/windows/win-arm64/` 分别生成自包含的 EXE。

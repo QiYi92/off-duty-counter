@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version=1.0.0
+version=1.1
 build=.build/distribution
 stage="$build/stage"
 app="$stage/牛马计数器.app"

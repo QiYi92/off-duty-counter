@@ -9,6 +9,12 @@ struct Schedule: Codable {
 
     var pay: Decimal? { Decimal(string: salary, locale: .current) }
 
+    var plannedHoursLabel: String? {
+        guard times.count == 4, times[0] < times[1], times[1] <= times[2], times[2] < times[3] else { return nil }
+        let minutes = times[1] - times[0] + times[3] - times[2]
+        return minutes % 60 == 0 ? "\(minutes / 60) 小时" : "\(minutes / 60) 小时 \(minutes % 60) 分钟"
+    }
+
     var valid: Bool {
         salary.range(of: #"^[0-9]+([.,][0-9]{1,2})?$"#, options: .regularExpression) != nil
         && salary.filter({ $0 == "." || $0 == "," }).allSatisfy { String($0) == Locale.current.decimalSeparator }
