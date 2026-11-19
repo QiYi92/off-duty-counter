@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "运行牛马计数器",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/.build/debug/Counter",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "构建牛马计数器"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:牛马计数器}",
+      "name": "Debug Counter",
+      "target": "Counter",
+      "configuration": "debug",
+      "preLaunchTask": "swift: Build Debug Counter"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:牛马计数器}",
+      "name": "Release Counter",
+      "target": "Counter",
+      "configuration": "release",
+      "preLaunchTask": "swift: Build Release Counter"
+    }
+  ]
+}

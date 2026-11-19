@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "构建牛马计数器",
+      "type": "process",
+      "command": "swift",
+      "args": ["build"],
+      "group": {"kind": "build", "isDefault": true}
+    }
+  ]
+}
